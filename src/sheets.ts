@@ -1,8 +1,7 @@
 import { google } from "googleapis";
-import path from "path";
 
 const auth = new google.auth.GoogleAuth({
-	keyFile: path.resolve("google-service-account.json"),
+	keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS!,
 	scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
 });
 

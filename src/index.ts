@@ -9,7 +9,7 @@ bot.onText(/\/start/, (msg) => {
 });
 
 bot.onText(/\/data/, async (msg) => {
-	const rows = await getSheet("Sheet1!A2:B10");
+	const rows = await getSheet("Товары!A2:B10");
 
 	const text = rows.length
 		? rows.map(r => r.join(" — ")).join("\n")
