@@ -1,5 +1,5 @@
 import { loadProducts } from "./sheets.service";
-import {getCategoriesFromCache, productsCache} from "../cache";
+import { getCategoriesFromCache } from "../cache";
 
 export async function getCategories(): Promise<string[]> {
 	await loadProducts();
