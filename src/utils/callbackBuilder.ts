@@ -1,6 +1,6 @@
 type CallbackPart = string | number | undefined | null;
 
-//Params: action, section, params
+//Params: action, params
 
 export function buildCallbackData(...parts: CallbackPart[]): string {
 	return parts

@@ -2,30 +2,26 @@ import { InlineKeyboardMarkup } from "node-telegram-bot-api";
 import { CALLBACK_TYPE, CATALOG_VALUE } from "../types/actions";
 import { COMMON_TEXTS } from "../texts/common.texts";
 import { CATALOG_TEXTS } from "../texts/catalog.texts";
-import { SECTION } from "../types/navigation";
 import { buildCallbackData } from "../utils/callbackBuilder";
 
 export function categoriesKeyboard(categories: string[]): InlineKeyboardMarkup {
 	const keyboard: InlineKeyboardMarkup["inline_keyboard"] = [];
 
 	keyboard.push([
-    //TODO check order of arguments in buildCallbackData
-		{text: CATALOG_TEXTS.ALL, callback_data: buildCallbackData(SECTION.CATALOG_CATEGORIES, CATALOG_VALUE.ALL)},
+		{text: CATALOG_TEXTS.ALL, callback_data: buildCallbackData(CALLBACK_TYPE.CATEGORY, CATALOG_VALUE.ALL)},
 	]);
 
 	for (let i = 0; i < categories.length; i += 2) {
 		keyboard.push(
 			categories.slice(i, i + 2).map(cat => ({
 				text: cat,
-        //TODO check order of arguments in buildCallbackData
-				callback_data: buildCallbackData(SECTION.CATALOG_CATEGORIES, cat),
+				callback_data: buildCallbackData(CALLBACK_TYPE.CATEGORY, cat),
 			}))
 		);
 	}
 
 	keyboard.push(
-    //TODO check order of arguments in buildCallbackData
-		[{text: COMMON_TEXTS.BACK_BUTTON, callback_data: buildCallbackData(CALLBACK_TYPE.CATALOG, CALLBACK_TYPE.BACK)}],
+		[{text: COMMON_TEXTS.BACK_BUTTON, callback_data: buildCallbackData(CATALOG_VALUE.BACK, CALLBACK_TYPE.CATALOG)}],
 		[{text: CATALOG_TEXTS.DOWNLOAD_CATALOG, callback_data: buildCallbackData(CALLBACK_TYPE.CATALOG, CALLBACK_TYPE.DOWNLOAD_XLSX)}]
 	);
 

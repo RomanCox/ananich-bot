@@ -14,6 +14,28 @@ const COLUMN_MAP: Record<string, keyof Product> = {
 	"Тип SIM": "sim",
 };
 
+function sortProducts(products: Product[]): Product[] {
+	return [...products].sort((a, b) => {
+		// 1. Бренд
+		const brandCompare = (a.brand ?? "").localeCompare(b.brand ?? "", "ru", {
+			sensitivity: "base",
+		});
+		if (brandCompare !== 0) return brandCompare;
+
+		// 2. Категория
+		const categoryCompare = (a.category ?? "").localeCompare(b.category ?? "", "ru", {
+			sensitivity: "base",
+		});
+		if (categoryCompare !== 0) return categoryCompare;
+
+		// 3. Название (с поддержкой чисел)
+		return (a.name ?? "").localeCompare(b.name ?? "", "ru", {
+			numeric: true,
+			sensitivity: "base",
+		});
+	});
+}
+
 export function parseXlsxToProducts(buffer: Buffer): Product[] {
 	const workbook = XLSX.read(buffer, { type: "buffer" });
 	const sheetName = workbook.SheetNames[0];
@@ -27,9 +49,11 @@ export function parseXlsxToProducts(buffer: Buffer): Product[] {
 		throw new Error("Неверный формат XLSX файла");
 	}
 
-	return rows
+	const products =  rows
 		.map(mapRowToProduct)
 		.filter(isValidProduct);
+
+	return sortProducts(products);
 }
 
 function hasRequiredColumns(row: Record<string, unknown>): boolean {

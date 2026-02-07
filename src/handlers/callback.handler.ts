@@ -1,10 +1,18 @@
 import TelegramBot from "node-telegram-bot-api";
-import { CALLBACK_TYPE } from "../types/actions";
-import { setChatState } from "../state/chat.state";
+import { CALLBACK_TYPE, CATALOG_VALUE } from "../types/actions";
+import { getChatState, setChatState } from "../state/chat.state";
 import { renderCatalogStep } from "./catalog/renderCatalogStep";
 import { parseCallbackData } from "../utils/parseCallbackData";
 import { SECTION } from "../types/navigation";
 import { handleBack } from "./back.handler";
+import { deleteUser, startUserManagement, startXlsxUpload } from "../services/admin.service";
+import { renderAdminPanel } from "./main/renderAdminPanel";
+import { clearChatMessages } from "../utils/clearChatMessages";
+import { getProducts } from "../services/products.service";
+import { renderProductsList } from "../render/renderProductsList";
+import { openUsersList, showUsersList } from "./users/users.handler";
+import { setUserState } from "../state/user.state";
+import { PAGINATION_TEXTS } from "../texts/pagination.texts";
 
 export function registerCallbacks(bot: TelegramBot) {
 	bot.on("callback_query", async (query) => {
@@ -14,118 +22,123 @@ export function registerCallbacks(bot: TelegramBot) {
 
 		if (!chatId || !data) return;
 
-		const { action, section, params } = parseCallbackData(data);
-    console.log(action, section, params)
+		await bot.answerCallbackQuery(query.id);
 
-		if (action === CALLBACK_TYPE.CATALOG) {
-			switch (section) {
-				case SECTION.CATALOG:
-					setChatState(chatId, {
-						catalogStep: "products",
-						selectedBrand: undefined,
-						selectedCategory: undefined,
-					});
-					break;
+		const {action, params} = parseCallbackData(data);
 
-				case SECTION.CATALOG_BRANDS: {
-					const [brand] = params;
+		switch (action) {
+			case CALLBACK_TYPE.BACK: {
+				await handleBack(bot, chatId, messageId);
+				const nextState = getChatState(chatId);
 
-					setChatState(chatId, {
-						catalogStep: "categories",
-						selectedBrand: brand,
-						selectedCategory: undefined,
-					});
-					break;
-				}
-
-				case SECTION.CATALOG_CATEGORIES: {
-					const [brand, category] = params;
-
-					setChatState(chatId, {
-						catalogStep: "products",
-						selectedBrand: brand,
-						selectedCategory: category,
-					});
-					break;
-				}
-
-				case SECTION.CATALOG_DOWNLOAD_XLSX:
-					await bot.answerCallbackQuery(query.id, {
-						text: "Формирование прайса скоро будет доступно",
-						show_alert: true,
-					});
+				if (nextState.section === SECTION.MAIN) {
+					await renderAdminPanel(bot, chatId);
 					return;
+				}
+
+				if (nextState.section === SECTION.CATALOG) {
+					await renderCatalogStep(bot, chatId);
+					return;
+				}
+				return;
 			}
 
-			await renderCatalogStep(bot, chatId);
-			await bot.answerCallbackQuery(query.id);
-			return;
-		}
+			case CALLBACK_TYPE.UPLOAD_XLSX: {
+				await startXlsxUpload(bot, chatId);
+				return;
+			}
 
-		/** ================= BACK ================= */
-		if (action === CALLBACK_TYPE.BACK) {
-			// const state = getChatState(chatId);
-			//
-			// if (state.catalogStep === "products") {
-			// 	setChatState(chatId, {
-			// 		catalogStep: "categories",
-			// 		selectedCategory: undefined,
-			// 	});
-			// } else if (state.catalogStep === "categories") {
-			// 	setChatState(chatId, {
-			// 		catalogStep: "brands",
-			// 		selectedBrand: undefined,
-			// 	});
-			// }
-			//
-			// await renderCatalogStep(bot, chatId);
-			// await bot.answerCallbackQuery(query.id);
-			// return;
-			await handleBack(bot, chatId, messageId);
-			await bot.answerCallbackQuery(query.id);
-			return;
-		}
+			case CALLBACK_TYPE.MANAGE_USERS: {
+				await startUserManagement(bot, chatId);
+				return;
+			}
 
-	// 	/** ================= CATALOG ================= */
-	// 	if (data.startsWith("catalog:")) {
-	// 		const [, action, value] = data.split(":");
-	//
-	// 		switch (action) {
-	// 			case CALLBACK_TYPE.ALL:
-	// 				setChatState(chatId, {
-	// 					catalogStep: "products",
-	// 					selectedBrand: undefined,
-	// 					selectedCategory: undefined,
-	// 				});
-	// 				break;
-	//
-	// 			case CALLBACK_TYPE.BRAND:
-	// 				setChatState(chatId, {
-	// 					catalogStep: "categories",
-	// 					selectedBrand: value,
-	// 					selectedCategory: undefined,
-	// 				});
-	// 				break;
-	//
-	// 			case CALLBACK_TYPE.CATEGORY:
-	// 				setChatState(chatId, {
-	// 					catalogStep: "products",
-	// 					selectedCategory: value,
-	// 				});
-	// 				break;
-	//
-	// 			case CALLBACK_TYPE.DOWNLOAD_XLSX:
-	// 				// TODO add function for create xlsx
-	// 				await bot.answerCallbackQuery(query.id, {
-	// 					text: "Формирование прайса скоро будет доступно",
-	// 					show_alert: true,
-	// 				});
-	// 				return;
-	// 		}
-	//
-	// 		await renderCatalogStep(bot, chatId);
-	// 		await bot.answerCallbackQuery(query.id);
-	// 		return;
-	// 	}
+			case CALLBACK_TYPE.USERS_LIST: {
+				const paramValue = params[0];
+
+				if (!paramValue) {
+					await openUsersList(bot, chatId);
+					return;
+				}
+
+				if (paramValue === "goto") {
+					setUserState(chatId, { mode: "await_page_number" });
+					await bot.sendMessage(chatId, PAGINATION_TEXTS.ENTER_PAGE_NUMBER);
+					return;
+				}
+
+				await clearChatMessages(bot, chatId);
+
+				const state = getChatState(chatId);
+				let newPage = state.page ?? 1;
+				if (paramValue === "next") newPage++;
+				if (paramValue === "prev") newPage--;
+
+				setChatState(chatId, {
+					page: newPage,
+				});
+
+				await clearChatMessages(bot, chatId);
+				await showUsersList(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.ADD_USER: {
+				return;
+			}
+
+			case CALLBACK_TYPE.DELETE_USER: {
+				await deleteUser(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.BRAND: {
+				await clearChatMessages(bot, chatId);
+
+				const [brandValue] = params;
+
+				if (brandValue === CATALOG_VALUE.ALL) {
+					const products = getProducts();
+
+					await renderProductsList(bot, chatId, products, {
+						backToStep: "brands",
+					});
+
+					return;
+				}
+
+				setChatState(chatId, {
+					section: SECTION.CATALOG,
+					catalogStep: "categories",
+					selectedBrand: brandValue,
+					selectedCategory: undefined,
+				});
+
+				await renderCatalogStep(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.CATEGORY: {
+				await clearChatMessages(bot, chatId);
+
+				const [, categoryValue] = params;
+
+				const products = getProducts(
+					getChatState(chatId).selectedBrand,
+					categoryValue !== CATALOG_VALUE.ALL ? categoryValue : undefined,
+				);
+
+				setChatState(chatId, {
+					section: SECTION.CATALOG,
+					catalogStep: "products",
+					selectedCategory: categoryValue,
+				});
+
+				await renderProductsList(bot, chatId, products, {
+					backToStep: "categories",
+				});
+				return;
+			}
+		}
 	});
 }

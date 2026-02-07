@@ -16,43 +16,26 @@ export function setChatState(chatId: number, patch: Partial<ChatState>) {
 	chatState.set(chatId, { ...current, ...patch });
 }
 
+function patchChatState(chatId: number, patch: Partial<ChatState>) {
+	const state = getChatState(chatId);
+
+	setChatState(chatId, {
+		...state,
+		...patch,
+	});
+}
+
+export function registerBotMessage(chatId: number, messageId: number) {
+	const state = getChatState(chatId);
+
+	setChatState(chatId, {
+		messageIds: [...(state.messageIds ?? []), messageId],
+	});
+}
+
 export function resetChatState(chatId: number) {
 	chatState.delete(chatId);
 }
-
-// export function resetSectionState(chatId: number, section: Section) {
-// 	const current = getChatState(chatId);
-//
-// 	switch (section) {
-// 		case "catalog":
-// 			setChatState(chatId, {
-// 				section: section,
-// 				catalogStep: "brands",
-// 				selectedBrand: undefined,
-// 				selectedCategory: undefined,
-// 				productsMessageIds: [],
-// 			});
-// 			break;
-//
-// 		case "admin":
-// 			setChatState(chatId, {
-// 				section: Section.Admin,
-// 				adminStep: "main",
-// 			});
-// 			break;
-//
-// 		case "cart":
-// 			setChatState(chatId, {
-// 				section: Section.Cart,
-// 				cartStep: "root",
-// 				selectedBrand: undefined,
-// 				selectedCategory: undefined,
-// 				selectedProductId: undefined,
-// 				selectedVariantId: undefined,
-// 			});
-// 			break;
-// 	}
-// }
 
 export function clearChatState(chatId: number) {
 	chatState.delete(chatId);

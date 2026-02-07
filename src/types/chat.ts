@@ -1,9 +1,12 @@
-import { AdminStep, CartStep, CatalogStep, SECTION } from "./navigation";
+import { ManageUsersStep, CartStep, CatalogStep, SECTION } from "./navigation";
 
 export interface ChatState {
 	section?: SECTION;
 
-	adminStep?: AdminStep;
+	page?: number;
+	totalPages?: number;
+
+	adminStep?: ManageUsersStep;
 
 	catalogStep?: CatalogStep;
 	selectedBrand?: string;

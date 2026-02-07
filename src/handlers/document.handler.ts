@@ -5,6 +5,7 @@ import { getUserState, setUserState } from "../state/user.state";
 import { parseXlsxToProducts } from "../services/xlsx.service";
 import { saveProducts } from "../services/products.service";
 import { isAdmin } from "../services/users.service";
+import { registerBotMessage, setChatState } from "../state/chat.state";
 
 
 export function registerDocumentHandler(bot: TelegramBot) {
@@ -18,13 +19,15 @@ export function registerDocumentHandler(bot: TelegramBot) {
 		if (!isAdmin(chatId)) return;
 
 		if (state.mode !== "upload_xlsx") {
-			await bot.sendMessage(query.chat.id, "⛔ Сейчас я не жду файл");
+			const msg = await bot.sendMessage(query.chat.id, "⛔ Сейчас я не жду файл");
+			registerBotMessage(chatId, msg.message_id);
 			return;
 		}
 
 		const document = query.document;
 		if (!document) {
-			await bot.sendMessage(chatId, "❌ Файл не найден");
+			const msg = await bot.sendMessage(chatId, "❌ Файл не найден");
+			registerBotMessage(chatId, msg.message_id);
 			return;
 		}
 
@@ -38,16 +41,18 @@ export function registerDocumentHandler(bot: TelegramBot) {
 			const products = parseXlsxToProducts(buffer);
 
 			if (!products.length) {
-				await bot.sendMessage(chatId, "❌ Файл не содержит валидных товаров");
+				const msg = await bot.sendMessage(chatId, "❌ Файл не содержит валидных товаров");
+				registerBotMessage(chatId, msg.message_id);
 				return;
 			}
 
 			saveProducts(products);
 
-			await bot.sendMessage(
+			const msg = await bot.sendMessage(
 				chatId,
 				`✅ Прайс успешно загружен\nТоваров: ${products.length}`
 			);
+			registerBotMessage(chatId, msg.message_id);
 
 			setUserState(userId, { mode: "idle" });
 		} catch (error) {

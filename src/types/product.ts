@@ -9,3 +9,8 @@ export interface Product {
 	country?: string;
 	sim?: string;
 }
+
+export type ParsedApplePhone = {
+	modelBase: string;
+	storage: string;
+};

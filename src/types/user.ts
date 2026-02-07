@@ -5,10 +5,11 @@ export interface User {
 	role: UserRole;
 }
 
-export type UserMode =
+export type UserMode = "idle"
 	| "upload_xlsx"
-	| "manage_users"
-	| "idle";
+	| "add_user"
+	| "delete_user"
+	| "await_page_number";
 
 export interface UserState {
 	mode: UserMode;
