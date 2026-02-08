@@ -93,5 +93,4 @@ export async function editUser(bot: TelegramBot, chatId: number) {
   );
 
   registerBotMessage(chatId, msg.message_id);
-  return;
 }

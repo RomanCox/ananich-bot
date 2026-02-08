@@ -5,6 +5,7 @@ export enum CALLBACK_TYPE {
 	ADD_USER = "add_user",
 	DELETE_USER = "delete_user",
   EDIT_USER = "edit_user",
+  CHOOSE_NEW_ROLE = "choose_new_role",
 	USERS_LIST = "users_list",
 	CATALOG = "catalog",
 	BRAND = "brand",

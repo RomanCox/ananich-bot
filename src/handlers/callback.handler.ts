@@ -1,6 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { CALLBACK_TYPE, CATALOG_VALUE } from "../types/actions";
-import { getChatState, setChatState } from "../state/chat.state";
+import { getChatState, registerBotMessage, setChatState } from "../state/chat.state";
 import { renderCatalogStep } from "./catalog/renderCatalogStep";
 import { parseCallbackData } from "../utils/parseCallbackData";
 import { SECTION } from "../types/navigation";
@@ -14,8 +14,9 @@ import { openUsersList, showUsersList } from "./users/users.handler";
 import { getUserState, setUserState } from "../state/user.state";
 import { PAGINATION_TEXTS } from "../texts/pagination.texts";
 import { UserRole } from "../types/user";
-import { ROLE_LABELS, USERS_ERRORS, USERS_TEXTS } from "../texts/users.texts";
+import { USERS_ERRORS, USERS_TEXTS } from "../texts/users.texts";
 import { updateUserRole } from "../services/users.service";
+import { COMMON_TEXTS } from "../texts/common.texts";
 
 export function registerCallbacks(bot: TelegramBot) {
 	bot.on("callback_query", async (query) => {
@@ -43,6 +44,12 @@ export function registerCallbacks(bot: TelegramBot) {
 					await renderCatalogStep(bot, chatId);
 					return;
 				}
+
+        if (nextState.section === SECTION.MANAGE_USERS) {
+          await renderAdminPanel(bot, chatId);
+          return;
+        }
+
 				return;
 			}
 
@@ -98,6 +105,35 @@ export function registerCallbacks(bot: TelegramBot) {
       case CALLBACK_TYPE.EDIT_USER: {
 				await editUser(bot, chatId);
 				return;
+      }
+
+      case CALLBACK_TYPE.CHOOSE_NEW_ROLE: {
+        const role = params[0] as UserRole;
+        const userState = getUserState(chatId);
+
+        if (!userState.editingUserId) {
+          await bot.sendMessage(chatId, USERS_ERRORS.USER_NOT_CHOOSE_MESSAGE);
+          return;
+        }
+
+        await updateUserRole(userState.editingUserId, role);
+
+        setUserState(chatId, { mode: "idle" });
+
+        console.log(getChatState(chatId).section);
+
+        const msg = await bot.sendMessage(
+          chatId,
+          USERS_TEXTS.ROLE_RENEWED + role,
+          {
+            reply_markup: {
+              inline_keyboard: [[{ text: COMMON_TEXTS.BACK_BUTTON, callback_data: CALLBACK_TYPE.BACK }]]
+            }
+          }
+        );
+        registerBotMessage(chatId, msg.message_id);
+
+        return;
       }
 
 			case CALLBACK_TYPE.BRAND: {

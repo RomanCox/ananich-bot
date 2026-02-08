@@ -3,6 +3,8 @@ import { isAdmin, isSuperAdmin } from "../../services/users.service";
 import { setUserState } from "../../state/user.state";
 import { ROLE_LABELS, USERS_ERRORS, USERS_TEXTS } from "../../texts/users.texts";
 import { UserRole } from "../../types/user";
+import { CALLBACK_TYPE } from "../../types/actions";
+import { buildCallbackData } from "../../utils/callbackBuilder";
 
 function editUserRoleKeyboard(isSuperAdmin: boolean) {
 	const buttons: UserRole[] = isSuperAdmin
@@ -13,7 +15,7 @@ function editUserRoleKeyboard(isSuperAdmin: boolean) {
 		inline_keyboard: buttons.map(role => [
 			{
 				text: ROLE_LABELS[role],
-				callback_data: `EDIT_USER_ROLE:${role}`,
+				callback_data: buildCallbackData(CALLBACK_TYPE.CHOOSE_NEW_ROLE, role),
 			},
 		]),
 	};
