@@ -17,4 +17,5 @@ export interface UserState {
 	role?: UserRole;
 	step?: number;
 	payload?: unknown;
+	editingUserId?: number;
 }

@@ -50,7 +50,7 @@ export async function deleteUser(userId: number) {
 	persist();
 }
 
-export function updateUserRole(userId: number, role: User["role"]) {
+export async function updateUserRole(userId: number, role: User["role"]) {
 	const user = users.get(userId);
 	if (!user) throw new Error(USERS_ERRORS.USER_NOT_FOUND);
 

@@ -1,7 +1,23 @@
 import TelegramBot from "node-telegram-bot-api";
-import { deleteUser, isAdmin } from "../../services/users.service";
+import { isAdmin, isSuperAdmin } from "../../services/users.service";
 import { setUserState } from "../../state/user.state";
-import { USERS_ERRORS } from "../../texts/users.texts";
+import { ROLE_LABELS, USERS_ERRORS, USERS_TEXTS } from "../../texts/users.texts";
+import { UserRole } from "../../types/user";
+
+function editUserRoleKeyboard(isSuperAdmin: boolean) {
+	const buttons: UserRole[] = isSuperAdmin
+		? ["retail", "wholesale", "admin", "superadmin"]
+		: ["retail", "wholesale"];
+
+	return {
+		inline_keyboard: buttons.map(role => [
+			{
+				text: ROLE_LABELS[role],
+				callback_data: `EDIT_USER_ROLE:${role}`,
+			},
+		]),
+	};
+}
 
 export async function editUserInputHandler(
 	bot: TelegramBot,
@@ -25,28 +41,18 @@ export async function editUserInputHandler(
     return;
   }
 
-	try {
-		await deleteUser(userIdToDelete);
+	setUserState(chatId, {
+		mode: "edit_user",
+		editingUserId: userIdToEdit,
+	});
 
-		setUserState(chatId, { mode: "idle" });
+	const isSuperAdminUser = isSuperAdmin(chatId);
 
-		await bot.sendMessage(
-			chatId,
-			"✅ Пользователь успешно удалён"
-		);
-	} catch (error) {
-		if (error instanceof Error) {
-			switch (error.message) {
-				case USERS_ERRORS.USER_NOT_FOUND:
-					await bot.sendMessage(chatId, USERS_ERRORS.USER_NOT_FOUND_MESSAGE);
-					break;
-
-				default:
-					await bot.sendMessage(
-						chatId,
-						"❌ Не удалось удалить пользователя"
-					);
-			}
+	await bot.sendMessage(
+		chatId,
+		USERS_TEXTS.CHOOSE_ROLE,
+		{
+			reply_markup: editUserRoleKeyboard(isSuperAdminUser),
 		}
-	}
+	)
 }

@@ -5,14 +5,17 @@ import { renderCatalogStep } from "./catalog/renderCatalogStep";
 import { parseCallbackData } from "../utils/parseCallbackData";
 import { SECTION } from "../types/navigation";
 import { handleBack } from "./back.handler";
-import { deleteUser, startUserManagement, startXlsxUpload } from "../services/admin.service";
+import { deleteUser, editUser, startUserManagement, startXlsxUpload } from "../services/admin.service";
 import { renderAdminPanel } from "./main/renderAdminPanel";
 import { clearChatMessages } from "../utils/clearChatMessages";
 import { getProducts } from "../services/products.service";
 import { renderProductsList } from "../render/renderProductsList";
 import { openUsersList, showUsersList } from "./users/users.handler";
-import { setUserState } from "../state/user.state";
+import { getUserState, setUserState } from "../state/user.state";
 import { PAGINATION_TEXTS } from "../texts/pagination.texts";
+import { UserRole } from "../types/user";
+import { ROLE_LABELS, USERS_ERRORS, USERS_TEXTS } from "../texts/users.texts";
+import { updateUserRole } from "../services/users.service";
 
 export function registerCallbacks(bot: TelegramBot) {
 	bot.on("callback_query", async (query) => {
@@ -93,7 +96,8 @@ export function registerCallbacks(bot: TelegramBot) {
 			}
 
       case CALLBACK_TYPE.EDIT_USER: {
-        return;
+				await editUser(bot, chatId);
+				return;
       }
 
 			case CALLBACK_TYPE.BRAND: {
