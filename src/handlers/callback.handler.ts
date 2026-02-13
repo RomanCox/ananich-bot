@@ -14,11 +14,13 @@ import { CART_TEXTS, COMMON_TEXTS, PAGINATION_TEXTS, USERS_ERRORS, USERS_TEXTS }
 import { createUser, updateUserRole } from "../services/users.service";
 import { sendPriceList } from "../services/xlsx.service";
 import { editPriceFormation } from "../services/price.service";
+import { buildOrderMessage } from "../services/orders.service";
+
+const ADMIN_CHAT_ID = Number(process.env.ADMIN_CHAT_ID);
 
 export function registerCallbacks(bot: TelegramBot) {
 	bot.on("callback_query", async (query) => {
 		const chatId = query.message?.chat.id;
-		const messageId = query.message?.message_id;
 		const data = query.data;
 
 		if (!chatId || !data) return;
@@ -29,7 +31,7 @@ export function registerCallbacks(bot: TelegramBot) {
 
 		switch (action) {
 			case CALLBACK_TYPE.BACK: {
-				await handleBack(bot, chatId, messageId);
+				await handleBack(bot, chatId);
 				const nextState = getChatState(chatId);
 
 				if (nextState.section === SECTION.MAIN) {
@@ -466,6 +468,33 @@ export function registerCallbacks(bot: TelegramBot) {
 				});
 
 				await renderFlow(bot, chatId);
+
+				return;
+			}
+
+			case CALLBACK_TYPE.SUBMIT_ORDER: {
+				const state = getChatState(chatId);
+
+				if (!state.currentOrder?.length) {
+					return;
+				}
+
+				const message = buildOrderMessage(
+					state.currentOrder,
+					chatId
+				);
+
+				await bot.sendMessage(ADMIN_CHAT_ID, message, {
+					parse_mode: "HTML",
+				});
+
+				// Очистить корзину
+				setChatState(chatId, {
+					currentOrder: [],
+					selectedProductIdForCart: undefined,
+				});
+
+				await bot.sendMessage(chatId, "✅ Заказ отправлен администратору!");
 
 				return;
 			}
