@@ -1,6 +1,11 @@
 import * as XLSX from "xlsx";
-import { Product } from "../types/product";
+import fs from "fs";
+import path from "path";
+import { Product, PRODUCT_XLSX_HEADERS } from "../types";
 import { resolveBrandFromName } from "./brand-resolver.service";
+import { CATALOG_TEXTS } from "../texts";
+import TelegramBot from "node-telegram-bot-api";
+import { getChatState } from "../state/chat.state";
 
 const COLUMN_MAP: Record<string, keyof Product> = {
 	"SKU": "id",
@@ -37,7 +42,7 @@ function sortProducts(products: Product[]): Product[] {
 }
 
 export function parseXlsxToProducts(buffer: Buffer): Product[] {
-	const workbook = XLSX.read(buffer, { type: "buffer" });
+	const workbook = XLSX.read(buffer, {type: "buffer"});
 	const sheetName = workbook.SheetNames[0];
 	const sheet = workbook.Sheets[sheetName];
 
@@ -49,7 +54,7 @@ export function parseXlsxToProducts(buffer: Buffer): Product[] {
 		throw new Error("Неверный формат XLSX файла");
 	}
 
-	const products =  rows
+	const products = rows
 		.map(mapRowToProduct)
 		.filter(isValidProduct);
 
@@ -84,5 +89,71 @@ function isValidProduct(p: Product): boolean {
 		p.name &&
 		p.model &&
 		p.price
+	);
+}
+
+function productsToXlsxData(products: Product[]) {
+	const headerRow = Object.values(PRODUCT_XLSX_HEADERS);
+
+	const dataRows = products.map(product =>
+		Object.keys(PRODUCT_XLSX_HEADERS).map(key => {
+			const value = product[key as keyof Product];
+			return value ?? "";
+		})
+	);
+
+	return [headerRow, ...dataRows];
+}
+
+export function generateProductsXlsx(
+	products: Product[],
+	fileName = "price.xlsx"
+): string {
+	const sheetData = productsToXlsxData(products);
+
+	const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+	const workbook = XLSX.utils.book_new();
+
+	XLSX.utils.book_append_sheet(workbook, worksheet, "Прайс");
+
+	const filePath = path.resolve("tmp", fileName);
+
+	if (!fs.existsSync("tmp")) {
+		fs.mkdirSync("tmp");
+	}
+
+	XLSX.writeFile(workbook, filePath);
+
+	return filePath;
+}
+
+export async function sendPriceList(
+	bot: TelegramBot,
+	chatId: number,
+	products: Product[]
+) {
+	if (!products.length) {
+		await bot.sendMessage(chatId, CATALOG_TEXTS.NOT_ITEMS_FOR_DOWNLOAD);
+		return;
+	}
+
+	const state = getChatState(chatId);
+
+	const parts = ["price", state.selectedBrand, state.selectedCategory].filter(Boolean);
+	const fileName = `${parts.join("_")}.xlsx`;
+
+	const filePath = generateProductsXlsx(products, fileName);
+
+	await bot.sendDocument(
+		chatId,
+		fs.createReadStream(filePath),
+		{
+			caption: CATALOG_TEXTS.PRICE_LIST,
+		},
+		{
+			filename: fileName,
+			contentType:
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		}
 	);
 }

@@ -1,3 +1,10 @@
-export { mainKeyboard } from "./main.keyboard";
-export { adminKeyboard } from "./admin.keyboard";
-export { mergeKeyboards } from "./merge.keyboard";
+export * from "./admin.keyboard";
+export * from "./brands.keyboard";
+export * from "./cartRoot.keyboard";
+export * from "./categories.keyboard";
+export * from "./choosingAmount.keyboard";
+export * from "./choosingProduct.keyboard";
+export * from "./main.keyboard";
+export * from "./merge.keyboard";
+export * from "./models.keyboard";
+export * from "./storageValues.keyboard";

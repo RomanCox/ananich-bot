@@ -1,6 +1,6 @@
-import { ChatState } from "../types/chat";
+import { ChatState } from "../types";
 
-const DEFAULT_CHAT_STATE: ChatState = {};
+const DEFAULT_CHAT_STATE: ChatState = { mode: "idle" };
 
 const chatState = new Map<number, ChatState>();
 
@@ -14,15 +14,6 @@ export function getChatState(chatId: number): ChatState {
 export function setChatState(chatId: number, patch: Partial<ChatState>) {
 	const current = getChatState(chatId);
 	chatState.set(chatId, { ...current, ...patch });
-}
-
-function patchChatState(chatId: number, patch: Partial<ChatState>) {
-	const state = getChatState(chatId);
-
-	setChatState(chatId, {
-		...state,
-		...patch,
-	});
 }
 
 export function registerBotMessage(chatId: number, messageId: number) {

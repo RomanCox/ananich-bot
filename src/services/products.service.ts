@@ -1,47 +1,68 @@
 import fs from "fs";
 import path from "path";
-import { Product } from "../types/product";
+import { Product, ProductFilters } from "../types";
+import { priceFormat } from "../utils";
+import { getUser } from "./users.service";
+import { getPriceFormation } from "./price.service";
+import { sortProducts, stringWithoutSpaces } from "../utils";
 
 const PRODUCTS_PATH = path.resolve("src/data/products.json");
-let products: Product[] = [];
+let products = new Map<string, Product>();
 
-export function saveProducts(products: Product[]) {
+export function loadProducts() {
+	if (!fs.existsSync(PRODUCTS_PATH)) return;
+
+	const raw = fs.readFileSync(PRODUCTS_PATH, "utf8");
+	const list: Product[] = sortProducts(JSON.parse(raw));
+
+	products.clear();
+
+	for (const product of list) {
+		products.set(product.id, product);
+	}
+}
+
+export function saveProducts(list: Product[]) {
 	fs.writeFileSync(
 		PRODUCTS_PATH,
-		JSON.stringify(products, null, 2),
+		JSON.stringify(list, null, 2),
 		"utf-8"
 	);
+
+	products.clear();
+	for (const product of list) {
+		products.set(product.id, product);
+	}
 }
 
 export function getProducts(
-	brand?: string,
-	category?: string
+	chatId: number,
+	filters: ProductFilters = {},
 ): Product[] {
-	if (!fs.existsSync(PRODUCTS_PATH)) {
-		return [];
-	}
+	const userRole = getUser(chatId)?.role;
+	const priceFormation = getPriceFormation();
 
-	const raw = fs.readFileSync(PRODUCTS_PATH, "utf-8");
-	if (!raw) return [];
+	return Array.from(products.values())
+		.filter(p => {
+			if (filters.brand && p.brand !== filters.brand) return false;
+			if (filters.category && p.category !== filters.category) return false;
+			if (filters.model && stringWithoutSpaces(p.model) !== filters.model) return false;
 
-	try {
-		let products = JSON.parse(raw) as Product[];
+			if (filters.storage) {
+				if (!p.storage) return false;
+				if (stringWithoutSpaces(p.storage) !== filters.storage) return false;
+			}
 
-		if (!Array.isArray(products) || products.length === 0) {
-			return [];
-		}
+			return true;
+		})
+		.map(product => ({
+			...product,
+			price: priceFormat(product.price, priceFormation, userRole),
+		}))
+		// .sort(sortByName);
+}
 
-		if (brand) {
-			products = products.filter(p => p.brand === brand);
-		}
-
-		if (category) {
-			products = products.filter(p => p.category === category);
-		}
-
-		return products;
-	} catch (e) {
-		console.error("Ошибка чтения products.json", e);
-		return [];
-	}
+export function getProductById(id?: string): Product | undefined {
+	if (!id) return undefined;
+	return products.get(id);
 }

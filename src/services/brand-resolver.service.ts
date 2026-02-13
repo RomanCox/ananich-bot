@@ -8,7 +8,7 @@ export type Brand =
 	| "Beats"
 	| "Marshall"
 	| "Bose"
-	| "HarmanKardon"
+	| "Harman Kardon"
 	| "Dyson"
 	| "Crest"
 	| "Sonos"
@@ -37,7 +37,7 @@ const BRAND_PREFIXES: Record<Brand, string[]> = {
 	Beats: ["Beats"],
 	Marshall: ["Marshall"],
 	Bose: ["Bose"],
-	HarmanKardon: ["Harman Kardon"],
+	"Harman Kardon": ["Harman Kardon"],
 	Dyson: [
 		"Dyson",
 		"Щелевая Насадка",
@@ -66,6 +66,7 @@ export function resolveBrandFromName(name: string): Brand | undefined {
 				trimmedName.startsWith(prefix)
 			)
 		) {
+			console.log(brand)
 			return brand as Brand;
 		}
 	}

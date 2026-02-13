@@ -28,7 +28,6 @@ export async function clearChatMessages(
 	setChatState(chatId, {
 		inlineMessageId: undefined,
 		replyMessageId: undefined,
-		adminStep: undefined,
 		messageIds: [],
 	});
 }

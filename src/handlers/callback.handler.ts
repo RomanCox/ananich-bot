@@ -1,22 +1,19 @@
 import TelegramBot from "node-telegram-bot-api";
-import { CALLBACK_TYPE, CATALOG_VALUE } from "../types/actions";
+import { CALLBACK_TYPE, CATALOG_VALUE, ProductForCart, SECTION, UserRole } from "../types";
 import { getChatState, registerBotMessage, setChatState } from "../state/chat.state";
-import { renderCatalogStep } from "./catalog/renderCatalogStep";
-import { parseCallbackData } from "../utils/parseCallbackData";
-import { SECTION } from "../types/navigation";
+import { renderFlow } from "./renderFlow";
+import { parseCallbackData, removeNavigationMessage } from "../utils";
 import { handleBack } from "./back.handler";
-import { deleteUser, editUser, startUserManagement, startXlsxUpload } from "../services/admin.service";
+import { addUser, deleteUser, editUser, startUserManagement, startXlsxUpload } from "../services/admin.service";
 import { renderAdminPanel } from "./main/renderAdminPanel";
-import { clearChatMessages } from "../utils/clearChatMessages";
-import { getProducts } from "../services/products.service";
+import { clearChatMessages } from "../utils";
+import { getProductById, getProducts } from "../services/products.service";
 import { renderProductsList } from "../render/renderProductsList";
 import { openUsersList, showUsersList } from "./users/users.handler";
-import { getUserState, setUserState } from "../state/user.state";
-import { PAGINATION_TEXTS } from "../texts/pagination.texts";
-import { UserRole } from "../types/user";
-import { USERS_ERRORS, USERS_TEXTS } from "../texts/users.texts";
-import { updateUserRole } from "../services/users.service";
-import { COMMON_TEXTS } from "../texts/common.texts";
+import { CART_TEXTS, COMMON_TEXTS, PAGINATION_TEXTS, USERS_ERRORS, USERS_TEXTS } from "../texts";
+import { createUser, updateUserRole } from "../services/users.service";
+import { sendPriceList } from "../services/xlsx.service";
+import { editPriceFormation } from "../services/price.service";
 
 export function registerCallbacks(bot: TelegramBot) {
 	bot.on("callback_query", async (query) => {
@@ -41,14 +38,15 @@ export function registerCallbacks(bot: TelegramBot) {
 				}
 
 				if (nextState.section === SECTION.CATALOG) {
-					await renderCatalogStep(bot, chatId);
+					setChatState(chatId, { selectedCategory: undefined });
+					await renderFlow(bot, chatId);
 					return;
 				}
 
-        if (nextState.section === SECTION.MANAGE_USERS) {
-          await renderAdminPanel(bot, chatId);
-          return;
-        }
+				if (nextState.section === SECTION.CART) {
+					await renderFlow(bot, chatId);
+					return;
+				}
 
 				return;
 			}
@@ -72,12 +70,10 @@ export function registerCallbacks(bot: TelegramBot) {
 				}
 
 				if (paramValue === "goto") {
-					setUserState(chatId, { mode: "await_page_number" });
+					setChatState(chatId, { mode: "await_page_number" });
 					await bot.sendMessage(chatId, PAGINATION_TEXTS.ENTER_PAGE_NUMBER);
 					return;
 				}
-
-				await clearChatMessages(bot, chatId);
 
 				const state = getChatState(chatId);
 				let newPage = state.page ?? 1;
@@ -94,6 +90,7 @@ export function registerCallbacks(bot: TelegramBot) {
 			}
 
 			case CALLBACK_TYPE.ADD_USER: {
+				await addUser(bot, chatId);
 				return;
 			}
 
@@ -107,20 +104,44 @@ export function registerCallbacks(bot: TelegramBot) {
 				return;
       }
 
-      case CALLBACK_TYPE.CHOOSE_NEW_ROLE: {
-        const role = params[0] as UserRole;
-        const userState = getUserState(chatId);
+			case CALLBACK_TYPE.ROLE_FOR_NEW_USER: {
+				const role = params[0] as UserRole;
+				const state = getChatState(chatId);
 
-        if (!userState.editingUserId) {
+				if (!state.newUserId) {
+					await bot.sendMessage(chatId, USERS_ERRORS.USER_NOT_CHOOSE_MESSAGE);
+					return;
+				}
+
+				await createUser({ id: state.newUserId, role });
+
+				setChatState(chatId, { mode: "idle" });
+
+				await clearChatMessages(bot, chatId);
+
+				const msg = await bot.sendMessage(chatId, USERS_TEXTS.ADD_SUCCESSFUL, {
+					reply_markup: {
+						inline_keyboard: [[{ text: COMMON_TEXTS.BACK_BUTTON, callback_data: CALLBACK_TYPE.BACK }]]
+					}
+				});
+				registerBotMessage(chatId, msg.message_id);
+				return;
+			}
+
+      case CALLBACK_TYPE.NEW_ROLE_FOR_EXIST_USER: {
+        const role = params[0] as UserRole;
+        const state = getChatState(chatId);
+
+        if (!state.editingUserId) {
           await bot.sendMessage(chatId, USERS_ERRORS.USER_NOT_CHOOSE_MESSAGE);
           return;
         }
 
-        await updateUserRole(userState.editingUserId, role);
+        await updateUserRole(state.editingUserId, role);
 
-        setUserState(chatId, { mode: "idle" });
+        setChatState(chatId, { mode: "idle" });
 
-        console.log(getChatState(chatId).section);
+				await clearChatMessages(bot, chatId);
 
         const msg = await bot.sendMessage(
           chatId,
@@ -132,9 +153,28 @@ export function registerCallbacks(bot: TelegramBot) {
           }
         );
         registerBotMessage(chatId, msg.message_id);
-
         return;
       }
+
+			case CALLBACK_TYPE.EDIT_RUB_TO_BYN: {
+				await editPriceFormation(bot, chatId, "edit_rub_to_byn");
+				return;
+			}
+
+			case CALLBACK_TYPE.EDIT_RUB_TO_USD: {
+				await editPriceFormation(bot, chatId, "edit_rub_to_usd");
+				return;
+			}
+
+			case CALLBACK_TYPE.EDIT_RETAIL_MULT: {
+				await editPriceFormation(bot, chatId, "edit_retail_mult");
+				return;
+			}
+
+			case CALLBACK_TYPE.EDIT_WHOLESALE_MULT: {
+				await editPriceFormation(bot, chatId, "edit_wholesale_mult");
+				return;
+			}
 
 			case CALLBACK_TYPE.BRAND: {
 				await clearChatMessages(bot, chatId);
@@ -142,45 +182,291 @@ export function registerCallbacks(bot: TelegramBot) {
 				const [brandValue] = params;
 
 				if (brandValue === CATALOG_VALUE.ALL) {
-					const products = getProducts();
-
-					await renderProductsList(bot, chatId, products, {
-						backToStep: "brands",
-					});
+					await renderProductsList(bot, chatId);
 
 					return;
 				}
 
 				setChatState(chatId, {
-					section: SECTION.CATALOG,
-					catalogStep: "categories",
+					flowStep: "categories",
 					selectedBrand: brandValue,
 					selectedCategory: undefined,
 				});
 
-				await renderCatalogStep(bot, chatId);
+				await renderFlow(bot, chatId);
 				return;
 			}
 
 			case CALLBACK_TYPE.CATEGORY: {
 				await clearChatMessages(bot, chatId);
 
-				const [, categoryValue] = params;
+				const [categoryValue] = params;
 
-				const products = getProducts(
-					getChatState(chatId).selectedBrand,
-					categoryValue !== CATALOG_VALUE.ALL ? categoryValue : undefined,
+				const selectedCategory = categoryValue !== CATALOG_VALUE.ALL ? categoryValue : undefined;
+
+				const state = getChatState(chatId);
+
+				const nextStep = state.section === SECTION.CATALOG ? "products" : "models";
+
+				setChatState(chatId, {
+					flowStep: nextStep,
+					selectedCategory,
+				});
+
+				if (state.section === SECTION.CATALOG) {
+					await renderProductsList(bot, chatId);
+					return;
+				}
+
+				if (state.section === SECTION.CART) {
+					await renderFlow(bot, chatId);
+					return;
+				}
+				return;
+			}
+
+			case CALLBACK_TYPE.MODEL: {
+				await clearChatMessages(bot, chatId);
+
+				const [modelValue] = params;
+
+				setChatState(chatId, {
+					flowStep: "storage",
+					selectedModel: modelValue,
+				});
+
+				await renderFlow(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.STORAGE: {
+				await clearChatMessages(bot, chatId);
+
+				const [storageValue] = params;
+
+				setChatState(chatId, {
+					flowStep: "products_for_cart",
+					selectedStorage: storageValue,
+				});
+
+				await renderFlow(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.DOWNLOAD_XLSX: {
+				const state = getChatState(chatId);
+
+				const products = getProducts(chatId, {
+					brand: state.selectedBrand,
+					category: state.selectedCategory
+				});
+
+				await sendPriceList(bot, chatId, products);
+				return;
+			}
+
+			case CALLBACK_TYPE.ADD_ITEM_TO_CART: {
+				await clearChatMessages(bot, chatId);
+
+				setChatState(chatId, {
+					section: SECTION.CART,
+					flowStep: "brands",
+					selectedBrand: undefined,
+					selectedCategory: undefined,
+					selectedModel: undefined,
+					selectedStorage: undefined,
+				});
+
+				await renderFlow(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.CHOOSING_PRODUCT: {
+				await clearChatMessages(bot, chatId);
+
+				const [ selectedProductId ] = params;
+
+				setChatState(chatId, {
+					mode: "amount_product_for_cart",
+					flowStep: "amount",
+					selectedProductId,
+				});
+
+				await renderFlow(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.CHOOSING_AMOUNT: {
+				await clearChatMessages(bot, chatId);
+
+				const state = getChatState(chatId);
+				const [ amount ] = params;
+
+				if (Number.isNaN(amount)) {
+					const msg = await bot.sendMessage(chatId, CART_TEXTS.AMOUNT_WILL_BE_NUMBER);
+					registerBotMessage(chatId, msg.message_id);
+					return;
+				}
+
+				const choseProduct = getProductById(state.selectedProductId);
+
+				if (!choseProduct) {
+					const msg = await bot.sendMessage(chatId, CART_TEXTS.PRODUCT_UNAVAILABLE);
+					registerBotMessage(chatId, msg.message_id);
+					return;
+				}
+
+				const productForOrder: ProductForCart = {
+					...choseProduct,
+					amount: Number(amount),
+				};
+
+				const currentOrder = [ ...(state.currentOrder || []), productForOrder ];
+
+				setChatState(chatId, {
+					selectedProductId: undefined,
+					flowStep: "products_for_cart",
+					currentOrder,
+				});
+
+				await renderFlow(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.CART: {
+				await clearChatMessages(bot, chatId);
+				await removeNavigationMessage(bot, chatId);
+
+				setChatState(chatId, {
+					section: SECTION.CART,
+					selectedBrand: undefined,
+					selectedCategory: undefined,
+					selectedModel: undefined,
+					selectedStorage: undefined,
+				});
+
+				await renderFlow(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.CHECK_CART: {
+				await clearChatMessages(bot, chatId);
+
+				setChatState(chatId, {
+					flowStep: "main",
+					selectedBrand: undefined,
+					selectedCategory: undefined,
+					selectedModel: undefined,
+					selectedStorage: undefined,
+				});
+
+				await renderFlow(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.EDITING_ORDER: {
+				await clearChatMessages(bot, chatId);
+
+				setChatState(chatId, {
+					flowStep: "edit_cart",
+				});
+
+				await renderFlow(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.EDIT_CART_ITEM: {
+				await clearChatMessages(bot, chatId);
+				const [productId] = params;
+
+				setChatState(chatId, {
+					flowStep: "edit_product_in_cart",
+					selectedProductIdForCart: productId,
+				});
+
+				await renderFlow(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.CLEAR_CART: {
+				await clearChatMessages(bot, chatId);
+
+				setChatState(chatId, {
+					currentOrder: undefined,
+				});
+
+				await renderFlow(bot, chatId);
+				return;
+			}
+
+			case CALLBACK_TYPE.INCREASE_AMOUNT: {
+				await clearChatMessages(bot, chatId);
+				const state = getChatState(chatId);
+
+				if (!state.currentOrder?.length || !state.selectedProductIdForCart) {
+					console.log("empty currentOrder or selectedProductIdForCart or currentOrder have not this product")
+					return;
+				}
+
+				const updatedOrder = state.currentOrder.map(product =>
+					product.id === state.selectedProductIdForCart
+						? { ...product, amount: product.amount + 1 }
+						: product
 				);
 
 				setChatState(chatId, {
-					section: SECTION.CATALOG,
-					catalogStep: "products",
-					selectedCategory: categoryValue,
+					currentOrder: updatedOrder,
 				});
 
-				await renderProductsList(bot, chatId, products, {
-					backToStep: "categories",
+				await renderFlow(bot, chatId);
+
+				return;
+			}
+
+			case CALLBACK_TYPE.DECREASE_AMOUNT: {
+				await clearChatMessages(bot, chatId);
+
+				const state = getChatState(chatId);
+
+				if (!state.currentOrder?.length || !state.selectedProductIdForCart) {
+					console.log("empty currentOrder or selectedProductIdForCart or currentOrder have not this product");
+					return;
+				}
+
+				const updatedOrder = state.currentOrder.map(product =>
+					product.id === state.selectedProductIdForCart
+						? { ...product, amount: product.amount - 1 }
+						: product
+				);
+
+				setChatState(chatId, {
+					currentOrder: updatedOrder,
 				});
+
+				await renderFlow(bot, chatId);
+
+				return;
+			}
+
+			case CALLBACK_TYPE.DELETE_POSITION_FROM_CART: {
+				await clearChatMessages(bot, chatId);
+				const state = getChatState(chatId);
+
+				if (!state.currentOrder?.length || !state.selectedProductIdForCart) {
+					console.log("empty currentOrder or selectedProductIdForCart");
+					return;
+				}
+
+				const updatedOrder = state.currentOrder.filter(({ id }) => id !== state.selectedProductIdForCart);
+
+				setChatState(chatId, {
+					flowStep: "main",
+					currentOrder: updatedOrder,
+					selectedProductIdForCart: undefined,
+				});
+
+				await renderFlow(bot, chatId);
+
 				return;
 			}
 		}

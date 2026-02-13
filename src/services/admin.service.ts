@@ -1,12 +1,11 @@
 import TelegramBot from "node-telegram-bot-api";
-import { setUserState } from "../state/user.state";
-import { COMMON_TEXTS } from "../texts/common.texts";
-import { clearChatMessages } from "../utils/clearChatMessages";
-import { ADMIN_TEXTS } from "../texts/admin.texts";
-import { CALLBACK_TYPE } from "../types/actions";
+import { COMMON_TEXTS } from "../texts";
+import { clearChatMessages } from "../utils";
+import { ADMIN_TEXTS } from "../texts";
+import { CALLBACK_TYPE } from "../types";
 import { getChatState, registerBotMessage, setChatState } from "../state/chat.state";
-import { SECTION } from "../types/navigation";
-import { USERS_TEXTS } from "../texts/users.texts";
+import { SECTION } from "../types";
+import { USERS_TEXTS } from "../texts";
 
 export async function startXlsxUpload(bot: TelegramBot, chatId: number) {
 	await clearChatMessages(bot, chatId);
@@ -26,14 +25,11 @@ export async function startXlsxUpload(bot: TelegramBot, chatId: number) {
 		},
 	);
 
-	setUserState(chatId, {
-		mode: "upload_xlsx",
-	});
-
 	const prevState = getChatState(chatId);
 
 	setChatState(chatId, {
 		section: SECTION.UPLOAD_XLSX,
+		mode: "upload_xlsx",
 		messageIds: [...(prevState.messageIds ?? []), msg.message_id]
 	})
 }
@@ -68,29 +64,74 @@ export async function startUserManagement(bot: TelegramBot, chatId: number) {
 	});
 }
 
+export async function addUser(bot: TelegramBot, chatId: number) {
+	await clearChatMessages(bot, chatId);
+
+	setChatState(chatId, {
+		mode: "add_user",
+		adminStep: "add_user",
+	});
+
+	const msg = await bot.sendMessage(
+		chatId,
+		USERS_TEXTS.ENTER_ID_USER_ADD,
+		{
+			reply_markup: {
+				inline_keyboard: [[{
+					text: COMMON_TEXTS.BACK_BUTTON, callback_data: CALLBACK_TYPE.BACK
+				}]]
+			}
+		}
+	);
+	registerBotMessage(chatId, msg.message_id);
+
+	return;
+}
+
 export async function deleteUser(bot: TelegramBot, chatId: number) {
-	setUserState(chatId, {
+	await clearChatMessages(bot, chatId);
+
+	setChatState(chatId, {
 		mode: "delete_user",
+		adminStep: "delete_user",
 	});
 
 	const msg = await bot.sendMessage(
 		chatId,
 		USERS_TEXTS.ENTER_ID_USER_DELETE,
+		{
+			reply_markup: {
+				inline_keyboard: [[{
+					text: COMMON_TEXTS.BACK_BUTTON, callback_data: CALLBACK_TYPE.BACK
+				}]]
+			}
+		}
 	);
-
 	registerBotMessage(chatId, msg.message_id);
+
 	return;
 }
 
 export async function editUser(bot: TelegramBot, chatId: number) {
-  setUserState(chatId, {
-    mode: "edit_user",
-  });
+  await clearChatMessages(bot, chatId);
+
+	setChatState(chatId, {
+		mode: "edit_user",
+		adminStep: "edit_user",
+	});
 
   const msg = await bot.sendMessage(
     chatId,
     USERS_TEXTS.ENTER_ID_USER_EDIT,
+		{
+			reply_markup: {
+				inline_keyboard: [[{
+					text: COMMON_TEXTS.BACK_BUTTON, callback_data: CALLBACK_TYPE.BACK
+				}]]
+			}
+		}
   );
-
   registerBotMessage(chatId, msg.message_id);
+
+	return;
 }

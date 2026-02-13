@@ -6,11 +6,15 @@ import { registerStart } from "./handlers/main/start.handler";
 import { registerCallbacks } from "./handlers/callback.handler";
 import { registerMessages } from "./handlers/message.handler";
 import { registerDocumentHandler } from "./handlers/document.handler";
+import { loadProducts } from "./services/products.service";
+import { loadPriceFormation } from "./services/price.service";
 
 async function bootstrap() {
 	const bot = await createBot();
 
 	loadUsers();
+	loadProducts();
+	loadPriceFormation();
 
 	registerStart(bot);
 	registerMessages(bot);

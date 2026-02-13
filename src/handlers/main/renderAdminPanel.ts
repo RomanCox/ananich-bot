@@ -1,6 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { isAdmin } from "../../services/users.service";
-import { START_TEXTS } from "../../texts/start.texts";
+import { START_TEXTS } from "../../texts";
 import { adminKeyboard } from "../../keyboards";
 import { setChatState } from "../../state/chat.state";
 

@@ -1,19 +1,23 @@
 import { InlineKeyboardMarkup } from "node-telegram-bot-api";
-import { CALLBACK_TYPE, CATALOG_VALUE } from "../types/actions";
-import { CATALOG_TEXTS } from "../texts/catalog.texts";
-import { buildCallbackData } from "../utils/callbackBuilder";
-import { COMMON_TEXTS } from "../texts/common.texts";
+import { CALLBACK_TYPE, CATALOG_VALUE, SECTION } from "../types";
+import { CATALOG_TEXTS } from "../texts";
+import { buildCallbackData } from "../utils";
+import { COMMON_TEXTS } from "../texts";
 
-export function brandsKeyboard(brands: string[], options?: { showBack?: boolean }): InlineKeyboardMarkup {
+const BUTTONS_IN_RAW = 2;
+
+export function brandsKeyboard(brands: string[], options?: { withAllBtn?: boolean, withDownloadBtn?: boolean, showBack?: boolean }): InlineKeyboardMarkup {
 	const keyboard = [];
 
-	keyboard.push([
-		{text: CATALOG_TEXTS.ALL, callback_data: buildCallbackData(CALLBACK_TYPE.BRAND, CATALOG_VALUE.ALL)},
-	]);
+	if (options?.withAllBtn) {
+		keyboard.push([
+			{text: CATALOG_TEXTS.ALL, callback_data: buildCallbackData(CALLBACK_TYPE.BRAND, CATALOG_VALUE.ALL)},
+		]);
+	}
 
-	for (let i = 0; i < brands.length; i += 2) {
+	for (let i = 0; i < brands.length; i += BUTTONS_IN_RAW) {
 		keyboard.push(
-			brands.slice(i, i + 2).map(brand => ({
+			brands.slice(i, i + BUTTONS_IN_RAW).map(brand => ({
 				text: brand,
 				callback_data: buildCallbackData(CALLBACK_TYPE.BRAND, brand),
 			}))
@@ -24,17 +28,20 @@ export function brandsKeyboard(brands: string[], options?: { showBack?: boolean 
 		keyboard.push([
 			{
 				text: COMMON_TEXTS.BACK_BUTTON,
-				callback_data: buildCallbackData(CATALOG_VALUE.BACK, CALLBACK_TYPE.CATALOG),
+				callback_data: buildCallbackData(CALLBACK_TYPE.BACK, SECTION.CATALOG),
 			},
 		]);
 	}
 
-	keyboard.push(
-		[{
-			text: CATALOG_TEXTS.DOWNLOAD_CATALOG,
-			callback_data: buildCallbackData(CALLBACK_TYPE.CATALOG, CALLBACK_TYPE.DOWNLOAD_XLSX)
-		}]
-	);
+	if (options?.withDownloadBtn) {
+		keyboard.push(
+			[{
+				text: CATALOG_TEXTS.DOWNLOAD_CATALOG,
+				callback_data: buildCallbackData(SECTION.CATALOG, CALLBACK_TYPE.DOWNLOAD_XLSX)
+			}]
+		);
+	}
+
 
 	return {inline_keyboard: keyboard};
 }

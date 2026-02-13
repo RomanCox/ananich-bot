@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { User } from "../types/user";
-import { USERS_ERRORS } from "../texts/users.texts";
+import { User, UserRole } from "../types";
+import { USERS_ERRORS } from "../texts";
 
 const USERS_PATH = path.resolve(__dirname, "../data/users.json");
 
@@ -28,17 +28,21 @@ export function getUser(userId: number): User | undefined {
 	return users.get(userId);
 }
 
-export function addUser(user: User) {
+export function getUserRole(userId: number): UserRole | undefined {
+	return users.get(userId)?.role;
+}
+
+export function getAllUsers(): User[] {
+	return Array.from(users.values());
+}
+
+export async function createUser(user: User) {
 	if (users.has(user.id)) {
 		throw new Error(USERS_ERRORS.USER_EXISTS);
 	}
 
 	users.set(user.id, user);
 	persist();
-}
-
-export function getAllUsers(): User[] {
-	return Array.from(users.values());
 }
 
 export async function deleteUser(userId: number) {

@@ -6,9 +6,8 @@ import { UserRole } from "../../types/user";
 import { buildCallbackData } from "../../utils/callbackBuilder";
 import { CALLBACK_TYPE } from "../../types/actions";
 import { COMMON_TEXTS } from "../../texts/common.texts";
-import { clearChatMessages } from "../../utils/clearChatMessages";
 
-export function editUserRoleKeyboard(isSuperAdmin: boolean) {
+export function addUserRoleKeyboard(isSuperAdmin: boolean) {
 	const buttons: UserRole[] = isSuperAdmin
 		? ["retail", "wholesale", "admin", "superadmin"]
 		: ["retail", "wholesale"];
@@ -18,7 +17,7 @@ export function editUserRoleKeyboard(isSuperAdmin: boolean) {
 			...buttons.map(role => [
 				{
 					text: ROLE_LABELS[role],
-					callback_data: buildCallbackData(CALLBACK_TYPE.NEW_ROLE_FOR_EXIST_USER, role),
+					callback_data: buildCallbackData(CALLBACK_TYPE.ROLE_FOR_NEW_USER, role),
 				},
 			]),
 			[
@@ -31,22 +30,22 @@ export function editUserRoleKeyboard(isSuperAdmin: boolean) {
 	};
 }
 
-export async function editUserInputHandler(
+export async function addUserInputHandler(
 	bot: TelegramBot,
 	chatId: number,
 	text: string
 ) {
-	const userIdToEdit = Number(text.trim());
+	const newUserId = Number(text.trim());
 
-	if (Number.isNaN(userIdToEdit)) {
+	if (Number.isNaN(newUserId)) {
 		const msg = await bot.sendMessage(chatId, USERS_ERRORS.ID_NUMBER);
 		registerBotMessage(chatId, msg.message_id);
 
 		return;
 	}
 
-	if (userIdToEdit === chatId) {
-		const msg = await bot.sendMessage(chatId, USERS_ERRORS.EDIT_MYSELF);
+	if (newUserId === chatId) {
+		const msg = await bot.sendMessage(chatId, USERS_ERRORS.ADD_MYSELF);
 		registerBotMessage(chatId, msg.message_id);
 
 		return;
@@ -59,20 +58,12 @@ export async function editUserInputHandler(
 		return;
 	}
 
-	const user = getUser(userIdToEdit);
+	const user = getUser(newUserId);
 
-	if (!user) {
+	if (user) {
 		const msg = await bot.sendMessage(
 			chatId,
-			USERS_ERRORS.USER_NOT_FOUND_MESSAGE,
-			{
-				reply_markup: {
-					inline_keyboard: [[{
-						text: COMMON_TEXTS.BACK_BUTTON,
-						callback_data: CALLBACK_TYPE.BACK,
-					}]]
-				},
-			}
+			USERS_ERRORS.USER_EXIST
 		);
 		registerBotMessage(chatId, msg.message_id);
 
@@ -80,7 +71,7 @@ export async function editUserInputHandler(
 	}
 
 	setChatState(chatId, {
-		editingUserId: userIdToEdit,
+		newUserId: newUserId,
 	});
 
 	const isSuperAdminUser = isSuperAdmin(chatId);
@@ -89,7 +80,7 @@ export async function editUserInputHandler(
 		chatId,
 		USERS_TEXTS.CHOOSE_ROLE,
 		{
-			reply_markup: editUserRoleKeyboard(isSuperAdminUser),
+			reply_markup: addUserRoleKeyboard(isSuperAdminUser),
 		}
 	)
 	registerBotMessage(chatId, msg.message_id);

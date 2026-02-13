@@ -6,7 +6,6 @@ import { getUser, isAdmin } from "../../services/users.service";
 import { AUTH_TEXTS } from "../../texts/auth.texts";
 import { START_TEXTS } from "../../texts/start.texts";
 import { START_ACTIONS } from "../../types/actions";
-import { setUserRole } from "../../state/user.state";
 import { getWelcomeText } from "../../texts/welcome.texts";
 import { setChatState } from "../../state/chat.state";
 import { renderAdminPanel } from "./renderAdminPanel";
@@ -39,8 +38,6 @@ export function registerStart(bot: TelegramBot) {
 			);
 			return;
 		}
-
-		setUserRole(user.id, user.role);
 
 		const welcomeText = getWelcomeText(userName, isAdmin(chatId));
 

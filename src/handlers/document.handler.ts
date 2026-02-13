@@ -1,12 +1,11 @@
 import TelegramBot from "node-telegram-bot-api";
 import fs from "fs";
 import path from "path";
-import { getUserState, setUserState } from "../state/user.state";
 import { parseXlsxToProducts } from "../services/xlsx.service";
 import { saveProducts } from "../services/products.service";
 import { isAdmin } from "../services/users.service";
-import { registerBotMessage, setChatState } from "../state/chat.state";
-
+import { getChatState, registerBotMessage, setChatState } from "../state/chat.state";
+import { ADMIN_TEXTS } from "../texts/admin.texts";
 
 export function registerDocumentHandler(bot: TelegramBot) {
 	bot.on("document", async (query) => {
@@ -14,19 +13,19 @@ export function registerDocumentHandler(bot: TelegramBot) {
 
 		const userId = query.from.id;
 		const chatId = query.chat.id;
-		const state = getUserState(userId);
+		const state = getChatState(userId);
 
 		if (!isAdmin(chatId)) return;
 
 		if (state.mode !== "upload_xlsx") {
-			const msg = await bot.sendMessage(query.chat.id, "⛔ Сейчас я не жду файл");
+			const msg = await bot.sendMessage(query.chat.id, ADMIN_TEXTS.DONT_WAITING_FILE);
 			registerBotMessage(chatId, msg.message_id);
 			return;
 		}
 
 		const document = query.document;
 		if (!document) {
-			const msg = await bot.sendMessage(chatId, "❌ Файл не найден");
+			const msg = await bot.sendMessage(chatId, ADMIN_TEXTS.CANT_FIND_FILE);
 			registerBotMessage(chatId, msg.message_id);
 			return;
 		}
@@ -41,7 +40,7 @@ export function registerDocumentHandler(bot: TelegramBot) {
 			const products = parseXlsxToProducts(buffer);
 
 			if (!products.length) {
-				const msg = await bot.sendMessage(chatId, "❌ Файл не содержит валидных товаров");
+				const msg = await bot.sendMessage(chatId, ADMIN_TEXTS.ERROR_ITEMS);
 				registerBotMessage(chatId, msg.message_id);
 				return;
 			}
@@ -54,10 +53,10 @@ export function registerDocumentHandler(bot: TelegramBot) {
 			);
 			registerBotMessage(chatId, msg.message_id);
 
-			setUserState(userId, { mode: "idle" });
+			setChatState(userId, { mode: "idle" });
 		} catch (error) {
-			console.error("❌ XLSX upload error:", error);
-			await bot.sendMessage(chatId, "❌ Ошибка при обработке файла");
+			console.error(ADMIN_TEXTS.ERROR_XLSX, error);
+			await bot.sendMessage(chatId, ADMIN_TEXTS.FILE_ERROR);
 		}
 	});
 }

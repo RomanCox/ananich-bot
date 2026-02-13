@@ -3,21 +3,19 @@ export enum SECTION {
 	UPLOAD_XLSX = "upload_xlsx",
 	MANAGE_USERS = "manage_users",
 	CATALOG = "catalog",
+	ORDERS = "orders",
 	CART = "cart",
 }
 
-export enum NAVIGATION_VALUE {
-	CATALOG = "catalog",
-	CART = "cart",
-	ADMIN = "admin",
-}
-
-export type ManageUsersStep = "main" | "users_list" | "add_user" | "delete_user";
-export type CatalogStep = "brands" | "categories" | "products";
-export type CartStep =
-	| "root"
-	| "brand"
-	| "category"
-	| "product"
-	| "variant"
-	| "quantity";
+export type ManageUsersStep = "main" | "users_list" | "add_user" | "delete_user" | "edit_user";
+export type FlowStep =
+	"main" |
+	"brands" |
+	"categories" |
+	"products" |
+	"models" |
+	"storage" |
+	"products_for_cart" |
+	"amount" |
+	"edit_cart" |
+	"edit_product_in_cart";
