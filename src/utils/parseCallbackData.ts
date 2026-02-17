@@ -4,7 +4,7 @@ interface ParsedCallback {
 }
 
 export function parseCallbackData(data: string): ParsedCallback {
-	const [action, ...params] = data.split(":");
+	const [action, ...params] = data.split("::");
 
 	return {
 		action,

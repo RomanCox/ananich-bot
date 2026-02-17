@@ -66,7 +66,6 @@ export function resolveBrandFromName(name: string): Brand | undefined {
 				trimmedName.startsWith(prefix)
 			)
 		) {
-			console.log(brand)
 			return brand as Brand;
 		}
 	}

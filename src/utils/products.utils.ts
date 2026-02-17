@@ -130,7 +130,7 @@ export function getStorageValues(
 	return Array.from(
 		new Set(
 			products
-				.filter(p => (p.brand === brand && p.category === category && stringWithoutSpaces(p.model) === model))
+				.filter(p => (p.brand === brand && p.category === category && p.model === model))
 				.map(p => p.storage)
 				.filter((storage): storage is string => typeof storage === "string"),
 		)

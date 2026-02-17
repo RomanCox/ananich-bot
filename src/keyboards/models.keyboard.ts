@@ -12,7 +12,7 @@ export function modelsKeyboard(models: string[]): InlineKeyboardMarkup {
 		keyboard.push(
 			models.slice(i, i + BUTTONS_IN_RAW).map(model => ({
 				text: model,
-				callback_data: buildCallbackData(CALLBACK_TYPE.MODEL, stringWithoutSpaces(model)),
+				callback_data: buildCallbackData(CALLBACK_TYPE.MODEL, model),
 			}))
 		);
 	}

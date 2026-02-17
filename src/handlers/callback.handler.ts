@@ -1,5 +1,5 @@
 import TelegramBot from "node-telegram-bot-api";
-import { CALLBACK_TYPE, CATALOG_VALUE, ProductForCart, SECTION, UserRole } from "../types";
+import { CALLBACK_TYPE, CATALOG_VALUE, Product, ProductForCart, SECTION, UserRole } from "../types";
 import { getChatState, registerBotMessage, setChatState } from "../state/chat.state";
 import { renderFlow } from "./renderFlow";
 import { parseCallbackData, removeNavigationMessage } from "../utils";
@@ -7,14 +7,14 @@ import { handleBack } from "./back.handler";
 import { addUser, deleteUser, editUser, startUserManagement, startXlsxUpload } from "../services/admin.service";
 import { renderAdminPanel } from "./main/renderAdminPanel";
 import { clearChatMessages } from "../utils";
-import { getProductById, getProducts } from "../services/products.service";
+import { getProductById, getProducts, tempExports } from "../services/products.service";
 import { renderProductsList } from "../render/renderProductsList";
 import { openUsersList, showUsersList } from "./users/users.handler";
 import { CART_TEXTS, COMMON_TEXTS, PAGINATION_TEXTS, USERS_ERRORS, USERS_TEXTS } from "../texts";
 import { createUser, updateUserRole } from "../services/users.service";
 import { sendPriceList } from "../services/xlsx.service";
 import { editPriceFormation } from "../services/price.service";
-import { buildOrderMessage } from "../services/orders.service";
+import { buildOrderMessage, createOrder } from "../services/orders.service";
 
 const ADMIN_CHAT_ID = Number(process.env.ADMIN_CHAT_ID);
 
@@ -256,14 +256,24 @@ export function registerCallbacks(bot: TelegramBot) {
 			}
 
 			case CALLBACK_TYPE.DOWNLOAD_XLSX: {
-				const state = getChatState(chatId);
+				// const state = getChatState(chatId);
+        //
+				// const products = getProducts(chatId, {
+				// 	brand: state.selectedBrand,
+				// 	category: state.selectedCategory
+				// });
 
-				const products = getProducts(chatId, {
-					brand: state.selectedBrand,
-					category: state.selectedCategory
-				});
+        const productIds = tempExports.get(params[0]) || [];
+        const productsToExport = productIds
+          .map(id => getProductById(chatId, id))
+          .filter(Boolean) as Product[];
 
-				await sendPriceList(bot, chatId, products);
+        if (!productsToExport.length) {
+          await bot.sendMessage(chatId, "Товары для экспорта не найдены.");
+          return;
+        }
+
+				await sendPriceList(bot, chatId, productsToExport);
 				return;
 			}
 
@@ -310,7 +320,7 @@ export function registerCallbacks(bot: TelegramBot) {
 					return;
 				}
 
-				const choseProduct = getProductById(state.selectedProductId);
+				const choseProduct = getProductById(chatId, state.selectedProductId);
 
 				if (!choseProduct) {
 					const msg = await bot.sendMessage(chatId, CART_TEXTS.PRODUCT_UNAVAILABLE);
@@ -326,6 +336,7 @@ export function registerCallbacks(bot: TelegramBot) {
 				const currentOrder = [ ...(state.currentOrder || []), productForOrder ];
 
 				setChatState(chatId, {
+          mode: "idle",
 					selectedProductId: undefined,
 					flowStep: "products_for_cart",
 					currentOrder,
@@ -479,8 +490,13 @@ export function registerCallbacks(bot: TelegramBot) {
 					return;
 				}
 
+        const order = createOrder(query.from, state.currentOrder);
+
+        // const orders = loadOrders();
+        // orders.push(order);
+        // saveOrders(orders);
 				const message = buildOrderMessage(
-					state.currentOrder,
+					order,
 					chatId
 				);
 
@@ -490,7 +506,7 @@ export function registerCallbacks(bot: TelegramBot) {
 
 				// Очистить корзину
 				setChatState(chatId, {
-					currentOrder: [],
+					currentOrder: undefined,
 					selectedProductIdForCart: undefined,
 				});
 

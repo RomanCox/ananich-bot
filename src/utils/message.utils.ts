@@ -116,83 +116,161 @@ function shouldSplitMessage({
 		prevGroupKey !== currentGroupKey);
 }
 
-export function buildMessages(products: Product[]): string[] {
-	const messages: string[] = [];
+// export function buildMessages(products: Product[]): string[] {
+// 	const messages: string[] = [];
+//
+// 	let currentMessage = "";
+// 	let currentBrand: string | null = null;
+// 	let currentCategory: string | null = null;
+//
+// 	let prevModel: string | null = null;
+// 	let prevStorage: string | null = null;
+// 	let prevGroupKey: string | null = null;
+//
+// 	for (const product of products) {
+// 		const brand = product.brand ?? "";
+// 		const category = product.category ?? "";
+//
+// 		if (
+// 			shouldSplitMessage({
+// 				product,
+// 				currentBrand,
+// 				currentCategory,
+// 				prevGroupKey,
+// 			})
+// 		) {
+// 			if (currentMessage) {
+// 				messages.push(currentMessage.trim());
+// 			}
+//
+// 			currentMessage = "";
+// 			currentBrand = brand;
+// 			currentCategory = category;
+// 			prevModel = null;
+// 			prevStorage = null;
+// 			prevGroupKey = null;
+// 		}
+//
+// 		const model = product.model ?? "";
+// 		const storage = extractStorage(product);
+//
+// 		// пустая строка при смене модели или памяти
+// 		if (
+// 			currentMessage &&
+// 			(
+// 				(prevModel && model !== prevModel) ||
+// 				(prevStorage && storage !== prevStorage)
+// 			)
+// 		) {
+// 			currentMessage += "\n";
+// 		}
+//
+// 		const line = formatProductLine(product);
+//
+// 		// лимит Telegram
+// 		if ((currentMessage + line + "\n").length > 4096) {
+// 			messages.push(currentMessage.trim());
+//
+// 			currentMessage = "";
+// 			prevModel = null;
+// 			prevStorage = null;
+// 			prevGroupKey = null;
+// 		}
+//
+// 		currentMessage += line + "\n";
+//
+// 		// обновляем groupKey после добавления строки
+// 		const currentGroupKey = getProductGroupKey(product);
+// 		if (currentGroupKey) {
+// 			prevGroupKey = currentGroupKey;
+// 		}
+//
+// 		prevModel = model;
+// 		prevStorage = storage;
+// 	}
+//
+// 	if (currentMessage) {
+// 		messages.push(currentMessage.trim());
+// 	}
+//
+// 	return messages;
+// }
 
-	let currentMessage = "";
-	let currentBrand: string | null = null;
-	let currentCategory: string | null = null;
+type ProductMessage = {
+  text: string;
+  products: Product[];
+};
 
-	let prevModel: string | null = null;
-	let prevStorage: string | null = null;
-	let prevGroupKey: string | null = null;
+export function buildMessagesWithProducts(products: Product[]): ProductMessage[] {
+  const messages: ProductMessage[] = [];
 
-	for (const product of products) {
-		const brand = product.brand ?? "";
-		const category = product.category ?? "";
+  let currentMessage = "";
+  let currentProducts: Product[] = [];
+  let currentBrand: string | null = null;
+  let currentCategory: string | null = null;
+  let prevModel: string | null = null;
+  let prevStorage: string | null = null;
+  let prevGroupKey: string | null = null;
 
-		if (
-			shouldSplitMessage({
-				product,
-				currentBrand,
-				currentCategory,
-				prevGroupKey,
-			})
-		) {
-			if (currentMessage) {
-				messages.push(currentMessage.trim());
-			}
+  for (const product of products) {
+    const brand = product.brand ?? "";
+    const category = product.category ?? "";
 
-			currentMessage = "";
-			currentBrand = brand;
-			currentCategory = category;
-			prevModel = null;
-			prevStorage = null;
-			prevGroupKey = null;
-		}
+    if (
+      shouldSplitMessage({
+        product,
+        currentBrand,
+        currentCategory,
+        prevGroupKey,
+      })
+    ) {
+      if (currentMessage) {
+        messages.push({ text: currentMessage.trim(), products: currentProducts });
+      }
 
-		const model = product.model ?? "";
-		// const model = normalizeModel(product.model ?? "");
-		const storage = extractStorage(product);
+      currentMessage = "";
+      currentProducts = [];
+      currentBrand = brand;
+      currentCategory = category;
+      prevModel = null;
+      prevStorage = null;
+      prevGroupKey = null;
+    }
 
-		// пустая строка при смене модели или памяти
-		if (
-			currentMessage &&
-			(
-				(prevModel && model !== prevModel) ||
-				(prevStorage && storage !== prevStorage)
-			)
-		) {
-			currentMessage += "\n";
-		}
+    const model = product.model ?? "";
+    const storage = extractStorage(product);
 
-		const line = formatProductLine(product);
+    if (
+      currentMessage &&
+      ((prevModel && model !== prevModel) || (prevStorage && storage !== prevStorage))
+    ) {
+      currentMessage += "\n";
+    }
 
-		// лимит Telegram
-		if ((currentMessage + line + "\n").length > 4096) {
-			messages.push(currentMessage.trim());
+    const line = formatProductLine(product);
 
-			currentMessage = "";
-			prevModel = null;
-			prevStorage = null;
-			prevGroupKey = null;
-		}
+    if ((currentMessage + line + "\n").length > 4096) {
+      messages.push({ text: currentMessage.trim(), products: currentProducts });
+      currentMessage = "";
+      currentProducts = [];
+      prevModel = null;
+      prevStorage = null;
+      prevGroupKey = null;
+    }
 
-		currentMessage += line + "\n";
+    currentMessage += line + "\n";
+    currentProducts.push(product);
 
-		// обновляем groupKey после добавления строки
-		const currentGroupKey = getProductGroupKey(product);
-		if (currentGroupKey) {
-			prevGroupKey = currentGroupKey;
-		}
+    const currentGroupKey = getProductGroupKey(product);
+    if (currentGroupKey) prevGroupKey = currentGroupKey;
 
-		prevModel = model;
-		prevStorage = storage;
-	}
+    prevModel = model;
+    prevStorage = storage;
+  }
 
-	if (currentMessage) {
-		messages.push(currentMessage.trim());
-	}
+  if (currentMessage) {
+    messages.push({ text: currentMessage.trim(), products: currentProducts });
+  }
 
-	return messages;
+  return messages;
 }

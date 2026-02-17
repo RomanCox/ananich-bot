@@ -1,22 +1,56 @@
-import { ProductForCart } from "../types";
+import TelegramBot from "node-telegram-bot-api";
+import { IOrder, ProductForCart } from "../types";
 
-export function buildOrderMessage(order: ProductForCart[], userId: number): string {
-	const total = order.reduce(
+export function generateOrderId(): string {
+  const base = Date.now().toString().slice(-6);
+  const random = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
+
+  return base + random;
+}
+
+export function createOrder(
+  user: TelegramBot.User,
+  currentOrder: ProductForCart[]
+): IOrder {
+  const total = currentOrder.reduce(
+    (sum, product) => sum + Number(product.price) * product.amount,
+    0
+  );
+
+  const fullName = [user.first_name, user.last_name]
+    .filter(Boolean)
+    .join(" ");
+
+  return {
+    id: generateOrderId(),
+    userId: user.id,
+    username: user.username,
+    fullName: fullName || undefined,
+    items: [...currentOrder], // копия массива
+    total,
+    status: "new",
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function buildOrderMessage(order: IOrder, userId: number): string {
+	const total = order.items.reduce(
 		(sum, product) => sum + Number(product.price) * product.amount,
 		0
 	);
 
-	const items = order.map(product =>
-		`• ${product.name}
-  Кол-во: ${product.amount}
-  Цена: ${product.price}
-  Сумма: ${Number(product.price) * product.amount}`
+	const items = order.items.map((product) =>
+		`🔷 ${product.name}
+		📦 ${product.amount}шт × ${product.price} = ${Number(product.price) * product.amount}`
 	).join("\n\n");
 
 	return `
-🛒 <b>Новый заказ</b>
-
-👤 User ID: ${userId}
+🆕 <b>Поступил заказ!</b>
+🆔 заказа: ${order.id}
+👤 <a href="tg://user?id=${userId}">Клиент</a>
+📦 Статус: ${order.status}
 
 ${items}
 

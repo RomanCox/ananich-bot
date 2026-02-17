@@ -19,7 +19,7 @@ async function bootstrap() {
 	registerStart(bot);
 	registerMessages(bot);
 	registerCallbacks(bot);
-	registerDocumentHandler(bot)
+	registerDocumentHandler(bot);
 }
 
 bootstrap().catch(console.error);

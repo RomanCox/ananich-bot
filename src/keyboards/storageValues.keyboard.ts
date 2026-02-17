@@ -12,7 +12,7 @@ export function storageValuesKeyboard(storageValues: string[]): InlineKeyboardMa
 		keyboard.push(
 			storageValues.slice(i, i + BUTTONS_IN_RAW).map(storageValue => ({
 				text: storageValue,
-				callback_data: buildCallbackData(CALLBACK_TYPE.STORAGE, stringWithoutSpaces(storageValue)),
+				callback_data: buildCallbackData(CALLBACK_TYPE.STORAGE, storageValue),
 			}))
 		);
 	}

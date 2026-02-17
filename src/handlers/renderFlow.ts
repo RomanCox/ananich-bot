@@ -132,6 +132,7 @@ async function renderEditProductInCart (bot: TelegramBot, chatId: number) {
 
 async function renderBrands(bot: TelegramBot, chatId: number) {
 	const state = getChatState(chatId);
+
 	const products = getProducts(chatId);
 	const brands = getBrands(products);
 	if (!brands.length) {
@@ -205,7 +206,7 @@ async function renderStorage(bot: TelegramBot, chatId: number) {
 		brand: state.selectedBrand,
 		category: state.selectedCategory,
 		model: state.selectedModel,
-	})
+	});
 
 	const storageValues = getStorageValues(
 		products, state.selectedBrand, state.selectedCategory, state.selectedModel
@@ -294,7 +295,7 @@ async function renderChoosingProduct(bot: TelegramBot, chatId: number) {
 
 async function renderAmount(bot: TelegramBot, chatId: number) {
 	const state = getChatState(chatId);
-	const product = getProductById(state.selectedProductId);
+	const product = getProductById(chatId, state.selectedProductId);
 
 	if (!state.selectedBrand || !product) {
 		const msg = await bot.sendMessage(chatId, CART_TEXTS.PRODUCT_UNAVAILABLE);
@@ -306,7 +307,7 @@ async function renderAmount(bot: TelegramBot, chatId: number) {
 		`${product.name}\n` +
 		CART_TEXTS.CART_PRICE +
 		product.price +
-		product.country +
+		product.country + "\n" +
 		CART_TEXTS.CHOOSE_AMOUNT
 
 	const msg = await bot.sendMessage(chatId, text, {

@@ -60,7 +60,7 @@ export function registerMessages(bot: TelegramBot) {
 				return;
 			}
 
-			const choseProduct = getProductById(state.selectedProductId);
+			const choseProduct = getProductById(chatId, state.selectedProductId);
 
 			if (!choseProduct) {
 				const msg = await bot.sendMessage(chatId, CART_TEXTS.PRODUCT_UNAVAILABLE);

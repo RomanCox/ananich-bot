@@ -1,5 +1,5 @@
 import { ManageUsersStep, SECTION, FlowStep } from "./navigation";
-import { ProductForCart } from "./product";
+import { Product, ProductForCart } from "./product";
 
 export type ChatMode = "idle"
 	| "upload_xlsx"
@@ -32,9 +32,10 @@ export interface ChatState {
 	selectedStorage?: string;
 	selectedProductId?: string;
 	selectedAmount?: string;
-	selectedProductIdForCart?: string
+	selectedProductIdForCart?: string;
 
-	currentOrder?: ProductForCart[],
+  lastProductGroups?: Product[][];
+	currentOrder?: ProductForCart[];
 
 	messageIds?: number[];
 	inlineMessageId?: number;
