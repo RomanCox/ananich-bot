@@ -20,25 +20,11 @@ export async function renderProductsList(
 		return;
 	}
 
-	// const parts = buildMessages(products);
 	const parts = buildMessagesWithProducts(products);
 
   setChatState(chatId, {
     lastProductGroups: parts.map(p => p.products)
   });
-
-	// for (const part of parts) {
-  //   console.log(part)
-  //
-	// 	await bot.sendMessage(chatId, part, {
-	// 		reply_markup: {
-	// 			inline_keyboard: [[{
-	// 				text: CATALOG_TEXTS.DOWNLOAD_CATALOG,
-	// 				callback_data: CALLBACK_TYPE.DOWNLOAD_XLSX,
-	// 			}]]
-	// 		}
-	// 	});
-	// }
   for (const part of parts) {
     const exportKey = `${chatId}_${Date.now()}`;
     tempExports.set(exportKey, part.products.map(p => p.id));

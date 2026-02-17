@@ -256,13 +256,6 @@ export function registerCallbacks(bot: TelegramBot) {
 			}
 
 			case CALLBACK_TYPE.DOWNLOAD_XLSX: {
-				// const state = getChatState(chatId);
-        //
-				// const products = getProducts(chatId, {
-				// 	brand: state.selectedBrand,
-				// 	category: state.selectedCategory
-				// });
-
         const productIds = tempExports.get(params[0]) || [];
         const productsToExport = productIds
           .map(id => getProductById(chatId, id))
