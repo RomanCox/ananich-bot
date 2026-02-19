@@ -3,7 +3,7 @@ import TelegramBot from "node-telegram-bot-api";
 import { ENV } from "../../config/env";
 import { mainKeyboard } from "../../keyboards";
 import { getUser, isAdmin } from "../../services/users.service";
-import { ADMIN_TEXTS, AUTH_TEXTS } from "../../texts";
+import { AUTH_TEXTS } from "../../texts";
 import { START_TEXTS } from "../../texts";
 import { START_ACTIONS } from "../../types";
 import { getWelcomeText } from "../../texts";

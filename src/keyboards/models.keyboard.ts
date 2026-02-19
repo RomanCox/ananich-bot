@@ -1,7 +1,7 @@
 import { InlineKeyboardButton } from "node-telegram-bot-api";
 import { CALLBACK_TYPE, SECTION } from "../types";
 import { COMMON_TEXTS } from "../texts";
-import { stringWithoutSpaces, buildCallbackData } from "../utils";
+import { buildCallbackData } from "../utils";
 
 const BUTTONS_IN_RAW = 2;
 

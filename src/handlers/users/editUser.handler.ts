@@ -1,6 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { getUser, isAdmin, isSuperAdmin } from "../../services/users.service";
-import { ROLE_LABELS, USERS_ERRORS, USERS_TEXTS } from "../../texts";
+import { ROLE_LABELS, USERS_ERRORS } from "../../texts";
 import { setChatState } from "../../state/chat.state";
 import { UserRole } from "../../types";
 import { buildCallbackData } from "../../utils";
