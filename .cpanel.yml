@@ -1,0 +1,32 @@
+---
+deployment:
+  tasks:
+    - echo "=== DEPLOY START ==="
+
+    # Добавляем локальный pnpm в PATH
+    - export PATH="$HOME/bin:$PATH"
+
+    # Если pnpm не установлен — ставим локально
+    - |
+      if ! command -v pnpm > /dev/null; then
+        mkdir -p $HOME/bin
+        curl -L https://github.com/pnpm/pnpm/releases/latest/download/pnpm-linux-x64 -o $HOME/bin/pnpm
+        chmod +x $HOME/bin/pnpm
+      fi
+
+    # Установка зависимостей
+    - pnpm install
+
+    # Сборка TypeScript
+    - pnpm run build
+
+    # Остановка старого процесса (если есть)
+    - pm2 delete aaa-store-bot || true
+
+    # Запуск бота
+    - pm2 start dist/index.js --name "aaa-store-bot"
+
+    # Сохраняем pm2 процессы
+    - pm2 save
+
+    - echo "=== DEPLOY END ==="
